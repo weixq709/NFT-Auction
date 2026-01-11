@@ -1,9 +1,26 @@
-import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
 import { configVariable, defineConfig } from "hardhat/config";
 
+import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+import hardhatEthers from "@nomicfoundation/hardhat-ethers";
+import hardhatTypechain from "@nomicfoundation/hardhat-typechain";
+import hardhatMocha from "@nomicfoundation/hardhat-mocha";
+import hardhatEthersChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
+import hardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
+
 export default defineConfig({
-  plugins: [hardhatToolboxMochaEthersPlugin],
+  plugins: [
+    hardhatToolboxMochaEthersPlugin,
+    hardhatEthers,
+    hardhatTypechain,
+    hardhatMocha,
+    hardhatEthersChaiMatchers,
+    hardhatNetworkHelpers
+  ],
   solidity: {
+    npmFilesToBuild: [
+      "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol",
+      "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol",
+    ],
     profiles: {
       default: {
         version: "0.8.28",

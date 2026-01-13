@@ -6,54 +6,10 @@ import type { ActionCreatedEvent as FactoryActionCreatedEvent } from '../types/e
 import type { HardhatEthersSigner, HardhatEthers, HardhatEthersProvider } from "@nomicfoundation/hardhat-ethers/types";
 import type { NetworkHelpers } from '@nomicfoundation/hardhat-network-helpers/types'
 import { ContractTransactionResponse, ContractTransactionReceipt, Interface, LogDescription } from "ethers";
+import { Timer } from '../utils/index'
 
 const { ethers, provider, networkHelpers } = await hre.network.connect() as unknown as { ethers: HardhatEthers; provider: HardhatEthersProvider, networkHelpers: NetworkHelpers };
 
-class Timer {
-
-    count: number = 0;
-    promise: Promise<void>
-    resolve: (value: void | PromiseLike<void>) => void
-    timer: any
-    
-    constructor(count: number) {
-        if (count <= 0) {
-            throw new Error('The time must be greater than zero');
-        }
-        this.count = count;
-        this.resolve = () => {}
-        this.promise = new Promise((resolve) => {
-            this.resolve = resolve;
-        });
-    }
-
-    start() {
-        this.timer = setInterval(() => {
-            this.count --;
-            if(this.count === 0) {
-                this.resolve();
-                clearInterval(this.timer);
-                this.timer = 0;
-            }
-        }, 1000);
-    }
-
-    stop() {
-        clearInterval(this.timer);
-        this.timer = 0;
-        this.resolve();
-    }
-
-    wait() : Promise<void> {
-        return this.promise;
-    }
-
-    isComplete() : boolean {
-        return this.count === 0;
-    }
-}
-
-let globalError: Error | undefined;
 
 describe("Transparent proxy contracts test", function() {
 
@@ -414,6 +370,7 @@ describe("Transparent proxy contracts test", function() {
             let tx = auctionProxyContract.connect(seller).endAction();
             const res = await expect(tx).to.be.fulfilled;
             auctionReceipt = await res.wait();
+            console.log('tx hash: ', auctionReceipt?.hash)
         });
 
         it("Show auciton result", async function() {

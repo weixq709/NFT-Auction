@@ -1,24 +1,29 @@
 // SPDX-License-Identifier: MIT 
 pragma solidity >=0.8.20;
 
-import './NFTAction.sol';
+import './NFTAuction.sol';
 import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
+import '@openzeppelin/contracts/access/Ownable.sol';
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 /**
  * @dev 使用透明代理升级拍卖合约
  */
-contract TransparentProxyFactory is Initializable {
+contract TransparentProxyFactory is Initializable, Ownable {
 
     // 拍卖逻辑合约地址
     address actionImplementation;
 
     // 拍卖记录
-    mapping(uint256 actionId => address) actionMap;
+    mapping(address token => mapping(uint256 tokenId => uint256 actionId)) actionMap;
 
     // 拍卖ID
     uint256 nextActionId;
+
+    event ActionCreated(address indexed seller, uint256 indexed actionId, address actionProxyAddress, uint256 tokenId);
+
+    constructor() Ownable(msg.sender){}
 
     function initalize(address _actionImplementation) public initializer {
         require(address(0) != _actionImplementation, "invalid implementation address");
@@ -26,11 +31,15 @@ contract TransparentProxyFactory is Initializable {
         actionImplementation = _actionImplementation;
     }
 
-    function createAction(address tokenAddress, uint256 duration, uint256 startPrice, uint256 tokenId) external returns(uint256) {
+    function createAction(address tokenAddress, uint256 delay, uint256 duration, uint256 startPrice, uint256 tokenId) external {
+        // 已经拍卖的代币不能再次拍卖
+        require(actionMap[tokenAddress][tokenId] == 0, "The token has been auctioned");
         require(address(0) != tokenAddress, "invalid token address");
         require(duration > 0, "duration must be greater than zero");
         require(startPrice > 0, "startPrice must be greater than zero");
         require(tokenId > 0, "tokenId must be greater than zero");
+
+        // TODO 同种NFT，已拍卖的tokenID不能再次拍卖
 
         IERC721 nft = IERC721(tokenAddress);
         // 判断当前用户是否拥有NFT
@@ -42,17 +51,25 @@ contract TransparentProxyFactory is Initializable {
         );
 
         uint256 actionId = nextActionId;
-        // 设置onwer为当前工厂合约地址
-        // 设置data为空，手动调用initialize方法
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(actionImplementation, address(this), "");
+        // 创建代理，传入代理管理员地址和初始化数据
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            actionImplementation,
+            address(msg.sender),
+            ""
+        );
         address actionProxyAddress = address(proxy);
-        NFTAction(payable(actionProxyAddress)).initialize(tokenAddress, duration, startPrice, tokenId, actionId);
+        NFTAuction(payable(actionProxyAddress)).initialize(msg.sender, owner(), tokenAddress, delay, duration, startPrice, tokenId, actionId);
+        actionMap[tokenAddress][tokenId] = actionId;
 
         // 当前合约将NFT转给拍卖合约
-        nft.safeTransferFrom(msg.sender, address(this), tokenId);
-
-        actionMap[actionId] = actionProxyAddress;
+        nft.safeTransferFrom(msg.sender, actionProxyAddress, tokenId);
         nextActionId ++;
-        return actionId;
+
+        emit ActionCreated(msg.sender, actionId, actionProxyAddress, tokenId);
+    }
+
+    function setAuctionImplementation(address newImplementation) public onlyOwner {
+        require(address(0) != newImplementation, "invalid implementation");
+        actionImplementation = newImplementation;
     }
 }

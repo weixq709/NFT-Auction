@@ -420,13 +420,20 @@ describe("Transparent proxy contracts test", function() {
             await actionFactoryContract.connect(deployer).setAuctionImplementation(newImplAddress);
 
             // 获取seller的代币
-            const tokenIds = await nftTokenContract.tokensOfOwner(seller.address);
+            let tokenIds = await nftTokenContract.tokensOfOwner(seller.address);
+            let tx;
+            if(tokenIds.length === 0) {
+                // 再次领取
+                tx = await nftTokenContract.connect(seller).requestToken();
+                tx = await tx.wait();
+                tokenIds = await nftTokenContract.tokensOfOwner(seller.address);
+            }
             expect(tokenIds.length).to.be.greaterThan(0);
             const tokenId = tokenIds[0];
             console.log('tokenId ', tokenId);
 
             // 授权
-            let tx = await nftTokenContract.connect(seller).approve(actionFactoryAddress, tokenId);
+            tx = await nftTokenContract.connect(seller).approve(actionFactoryAddress, tokenId);
             await tx.wait();
 
             // 创建新的拍卖

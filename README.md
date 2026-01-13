@@ -69,7 +69,7 @@ npx hardhat keystore set SEPOLIA_BUYER2
 npm run deploy:sepolia
 ```
 
-![deploy](img\deploy.png)
+![deploy](./img/deploy.png)
 
 ###  5. 创建拍卖
 
@@ -79,11 +79,11 @@ npm run create
 
 
 
-![transaction](img\transaction.png)
+![transaction](./img/transaction.png)
 
 ## 测试报告
 
-![coverage](img\coverage.png)
+![coverage](./img/coverage.png)
 
 ## 问题总结
 

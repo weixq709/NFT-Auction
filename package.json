@@ -2,6 +2,16 @@
   "name": "token",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "build": "npx hardhat build",
+    "test": "npx hardhat test ./test/transparent-proxy.ts",
+    "test:coverage": "npx hardhat test ./test/transparent-proxy.ts --coverage",
+    "create": "npx hardhat run ./scripts/auction.ts --network sepolia",
+    "deploy:local": "concurrently \"npx hardhat node\" \"npx hardhat ignition deploy ignition/modules/main.ts --network localhost\" --kill-others --success first",
+    "deploy:sepolia": "npx hardhat ignition deploy ignition/modules/main.ts --network sepolia",
+    "redeploy:sepolia": "npx hardhat ignition deploy ignition/modules/main.ts --network sepolia --reset"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^4.0.4",
     "@nomicfoundation/hardhat-ethers-chai-matchers": "^3.0.2",
@@ -16,6 +26,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.5",
     "chai": "^5.3.3",
+    "concurrently": "^9.2.1",
     "ethers": "^6.16.0",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.1.3",

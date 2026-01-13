@@ -64,7 +64,14 @@ npx hardhat keystore set SEPOLIA_BUYER2
 | `npm run deploy:sepolia` | 部署合约到 Sepolia 测试网（智能部署，只部署未部署的合约） |
 | `npm run redeploy:sepolia` | 强制重新部署所有合约到 Sepolia 测试网（使用 --reset 参数） |
 
-###  4. 创建拍卖
+### 4. 部署合约
+```bash
+npm run deploy:sepolia
+```
+
+![deploy](img\deploy.png)
+
+###  5. 创建拍卖
 
 ```bash
 npm run create
@@ -72,11 +79,11 @@ npm run create
 
 
 
-![transaction](D:\workspace\contract\token\img\transaction.png)
+![transaction](img\transaction.png)
 
 ## 测试报告
 
-![coverage](D:\workspace\contract\token\img\coverage.png)
+![coverage](img\coverage.png)
 
 ## 问题总结
 

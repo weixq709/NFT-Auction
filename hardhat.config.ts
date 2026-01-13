@@ -6,6 +6,7 @@ import hardhatTypechain from "@nomicfoundation/hardhat-typechain";
 import hardhatMocha from "@nomicfoundation/hardhat-mocha";
 import hardhatEthersChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
 import hardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
+import hardhatKeystore from "@nomicfoundation/hardhat-keystore";
 
 export default defineConfig({
   plugins: [
@@ -14,12 +15,12 @@ export default defineConfig({
     hardhatTypechain,
     hardhatMocha,
     hardhatEthersChaiMatchers,
-    hardhatNetworkHelpers
+    hardhatNetworkHelpers,
+    hardhatKeystore
   ],
   solidity: {
     npmFilesToBuild: [
-      "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol",
-      "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol",
+      "@openzeppelin/contracts/token/ERC20/ERC20.sol"
     ],
     profiles: {
       default: {
@@ -37,14 +38,6 @@ export default defineConfig({
     },
   },
   networks: {
-    hardhatMainnet: {
-      type: "edr-simulated",
-      chainType: "l1",
-    },
-    hardhatOp: {
-      type: "edr-simulated",
-      chainType: "op",
-    },
     sepolia: {
       type: "http",
       chainType: "l1",

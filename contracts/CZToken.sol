@@ -52,7 +52,7 @@ contract CZToken is Ownable, ERC721, ERC721Enumerable {
      * @dev 获取某个用户所有NFT代币ID
      * @param owner 代币持有者地址
      */
-    function tokensOfOnwer(address owner) public view returns(uint256[] memory){
+    function tokensOfOwner(address owner) public view returns(uint256[] memory){
         uint256 ownerBalance = balanceOf(owner);
         uint256[] memory tokens = new uint256[](ownerBalance);
         

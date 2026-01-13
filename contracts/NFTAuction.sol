@@ -3,13 +3,13 @@ pragma solidity >=0.8.20;
 
 import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
+contract NFTAuction is IERC721Receiver, Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
 
     /**
      * @dev 开始拍卖事件
@@ -32,10 +32,11 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
     /**
      * @dev 结束拍卖事件
      * @param receiver 拍卖接收人
+     * @param tokenId 代币ID
      * @param price 成交价格
      * @param payToken 支付代币地址
      */
-    event ActionEnd(address indexed receiver, uint256 indexed price, address payToken);
+    event ActionEnd(address indexed receiver, uint256 indexed tokenId, uint256 indexed price, address payToken);
 
     /**
      * @dev 竞拍失败
@@ -78,18 +79,26 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
     // 支持的代币种类
     address[] supportTokens;
 
-    constructor() Ownable(msg.sender) {
+    modifier onlySeller {
+        require(action.seller == msg.sender, "only seller");
+        _;
     }
 
     function initialize(
+        address seller,
+        address admin,
         address tokenAddress,
+        uint256 delay, 
         uint256 duration,
         uint256 startPrice,
         uint256 tokenId,
         uint256 actionId) public initializer {
+   
+        __Ownable_init(admin);
+        __ReentrancyGuard_init();
         
         // 卖家地址不能是0地址
-        require(msg.sender != address(0), "invalid seller");
+        require(seller != address(0), "invalid seller");
         // NFT地址不能是0地址
         require(tokenAddress != address(0), "invalid token address");
         // 持续时间必须大于0
@@ -100,8 +109,8 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
 
         // 构建拍卖信息
         action = ActionInfo({
-            seller: msg.sender,
-            startTime: block.timestamp,
+            seller: seller,
+            startTime: block.timestamp + delay,
             duration: duration,
             ended: false,
             highestBidder: address(0),
@@ -114,9 +123,10 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
         });
 
         // 初始化仅设置ETH价格预言机
-        priceFeeds[address(0)] = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
+        addToken(address(0), 0x694AA1769357215DE4FAC081bf1f309aDC325306);
+        // priceFeeds[address(0)] = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
 
-        emit ActionCreated(msg.sender, tokenId, tokenAddress, duration, actionId);
+        emit ActionCreated(seller, tokenId, tokenAddress, duration, actionId);
     }
 
     /**
@@ -137,14 +147,15 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
         if (address(0) == payToken) {
             // ETH
             balance = msg.value;
+            // 判断余额是否充足
+            require(balance >= amount, "Insufficient balance");
         } else {
             // ERC20
             // 校验当前拍卖合约是否有msg.sender的可支配金额
             IERC20 token = IERC20(payToken);
             balance = token.allowance(msg.sender, address(this));
+            require(balance >= amount, "ERC20 allowance not enough");
         }
-        // 判断余额是否充足
-        require(balance >= amount, "Insufficient balance");
 
         // 将代币转为USD
         uint256 totalAmount = trasformToken2USD(payToken, amount);
@@ -156,7 +167,12 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
             revert BidFailure(highestPrice, payToken);
         }
         
-        // 竞拍成功
+        // 竞拍成功，如果是ERC20代币，将代币转到本合约
+        if (payToken != address(0)) {
+            bool transferSuccess = IERC20(payToken).transferFrom(msg.sender, address(this), amount);
+            require(transferSuccess, "ERC20 transfer failed");
+        }
+
         // 如果存在上一个竞拍人，退还代币
         if (action.highestBidder != address(0)) {
             refund(action.highestBidder, action.payToken, action.highestPrice);
@@ -174,8 +190,7 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
     /**
      * @dev 结束拍卖
      */
-    function endAction() public {
-        // TODO 控制方法调用权限只有合约创建人才可发起调用
+    function endAction() public onlySeller {
         // 校验拍卖是否开始
         require(block.timestamp >= action.startTime, "The auction hasn't started yet");
         // 判断拍卖是否结束
@@ -185,7 +200,7 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
         if (action.highestBidder == address(0)) {
             // 没有人出价，退还NFT给卖家
             nft.safeTransferFrom(address(this), action.seller, action.tokenId);
-            emit ActionEnd(action.seller, 0, address(0));
+            emit ActionEnd(action.seller, action.tokenId, 0, address(0));
         } else {
             // 将NFT转给买家
             nft.safeTransferFrom(address(this), action.highestBidder, action.tokenId);
@@ -193,7 +208,7 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
             // 将钱转给卖家
             // TODO 收取一定手续费
             refund(action.seller, action.payToken, action.highestPrice);
-            emit ActionEnd(action.highestBidder, action.highestPrice, action.payToken);
+            emit ActionEnd(action.highestBidder, action.tokenId, action.highestPrice, action.payToken);
         }
     }
 
@@ -227,7 +242,7 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
      * @param payToken 代币地址
      * @param amount 待转换代币金额
      */
-    function trasformToken2USD(address payToken, uint256 amount) private returns(uint256) {
+    function trasformToken2USD(address payToken, uint256 amount) private view returns(uint256) {
         if (amount == 0) {
             return 0;
         }
@@ -252,7 +267,7 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
     /**
      * @dev 获取当前最高价格
      */
-    function getCurrentHighestPrice() private returns(uint256) {
+    function getCurrentHighestPrice() private view returns(uint256) {
         // 如果当前是第一个卖家，以起拍价为最高价格
         uint256 hightestAmount = action.startPrice;
         if (action.highestBidder != address(0)) {
@@ -269,16 +284,18 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
      * @param priceFeed 价格预言机
      */
     function setToken(address payToken, address priceFeed) public onlyOwner {
-        // TODO 是否需要设置调用权限
         // 拍卖已开始不允许设置
         require(action.startTime > block.timestamp, "The auction has begun");
-        require(payToken != address(0), "invalid address");
+        addToken(payToken, priceFeed);
+    }
+
+    function addToken(address payToken, address priceFeed) private {
         require(priceFeed != address(0), "invalid address");
-        priceFeeds[payToken] = AggregatorV3Interface(priceFeed);
         if (address(priceFeeds[payToken]) == address(0)) {
             // 仅添加一次代币种类，后续修改预言机为替换，无需添加
             supportTokens.push(payToken);
         }
+        priceFeeds[payToken] = AggregatorV3Interface(priceFeed);
     }
 
     /**
@@ -296,10 +313,10 @@ contract NFTAction is IERC721Receiver, ReentrancyGuard, Ownable, Initializable {
     }
 
     function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
+        address, // operator
+        address, // from
+        uint256, // tokenId
+        bytes calldata // data
     ) external pure returns (bytes4) {
         return this.onERC721Received.selector;
     }

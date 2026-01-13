@@ -22,6 +22,11 @@ contract CZToken is Ownable, ERC721, ERC721Enumerable {
         return "";
     }
 
+    function mint(address to, uint256 amount) public onlyOwner {
+        require(address(0) != to, "invalid receiver");
+        _safeMint(msg.sender, totalSupply() + amount);
+    }
+
     function requestToken() external {
         uint8 total = totalCount[msg.sender];
         if (total == 0) {
@@ -32,7 +37,7 @@ contract CZToken is Ownable, ERC721, ERC721Enumerable {
         uint8 count = tokenCount[msg.sender];
 
         // 判断代币是否发放完
-        require(totalSupply() <= 1200, "There are no remaining tokens");
+        require(totalSupply() < 1200, "There are no remaining tokens");
         // 判断当前用户是否领取达到上限
         require(count < total, "The number of tokens has reached the limit");
         // 增加用户领取代币个数

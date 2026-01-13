@@ -16,7 +16,7 @@ contract TransparentProxyFactory is Initializable, Ownable {
     address actionImplementation;
 
     // 拍卖记录
-    mapping(address token => mapping(uint256 tokenId => uint256 actionId)) actionMap;
+    // mapping(address token => mapping(uint256 tokenId => bool)) actionMap;
 
     // 拍卖ID
     uint256 nextActionId;
@@ -33,13 +33,11 @@ contract TransparentProxyFactory is Initializable, Ownable {
 
     function createAction(address tokenAddress, uint256 delay, uint256 duration, uint256 startPrice, uint256 tokenId) external {
         // 已经拍卖的代币不能再次拍卖
-        require(actionMap[tokenAddress][tokenId] == 0, "The token has been auctioned");
+        // require(actionMap[tokenAddress][tokenId] == 0, "The token has been auctioned");
         require(address(0) != tokenAddress, "invalid token address");
         require(duration > 0, "duration must be greater than zero");
         require(startPrice > 0, "startPrice must be greater than zero");
         require(tokenId > 0, "tokenId must be greater than zero");
-
-        // TODO 同种NFT，已拍卖的tokenID不能再次拍卖
 
         IERC721 nft = IERC721(tokenAddress);
         // 判断当前用户是否拥有NFT
@@ -59,7 +57,7 @@ contract TransparentProxyFactory is Initializable, Ownable {
         );
         address actionProxyAddress = address(proxy);
         NFTAuction(payable(actionProxyAddress)).initialize(msg.sender, owner(), tokenAddress, delay, duration, startPrice, tokenId, actionId);
-        actionMap[tokenAddress][tokenId] = actionId;
+        // actionMap[tokenAddress][tokenId] = actionId;
 
         // 当前合约将NFT转给拍卖合约
         nft.safeTransferFrom(msg.sender, actionProxyAddress, tokenId);

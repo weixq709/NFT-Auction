@@ -71,15 +71,23 @@ npm run deploy:sepolia
 
 ![deploy](./img/deploy.png)
 
-###  5. 创建拍卖
+### 5. 创建拍卖
 
 ```bash
 npm run create
 ```
 
-
-
 ![transaction](./img/transaction.png)
+
+### 6. 交易结果
+
+tx hash:
+```shell
+0xaf836f02c303e9d74cd8b2c21f8a424104dd0b38cb1ed679c4f36c0ee1afc23f
+```
+
+在etherscan查看
+![transaction-result](./img/result.png)
 
 ## 测试报告
 
